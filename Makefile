@@ -32,7 +32,7 @@ help: ## Show this menu
 	@echo -e "Variables use the \$${VARIABLE} syntax, and are supplied as environment variables before the command. For example, \n"
 	@echo -e "  \$$ VARIABLE="foo" make help\n"
 	@echo -e $(ANSI_TITLE)Commands:$(ANSI_OFF)
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "    \033[32m%-30s\033[0m %s\n", $$1, $$2}'
+	@grep -E '^[a-z.A-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "    \033[32m%-30s\033[0m %s\n", $$1, $$2}'
 
 clean: ## Cleans up build artifacts
 	rm -rf dist
@@ -41,3 +41,13 @@ bin: clean ## Builds the binaries
 	mkdir -p dist/usr/bin
 	cd src && \
 		go build -o ../dist/usr/bin/library
+
+docker.build: ## Builds the container
+	docker build \
+		--tag gcr.io/littleman-co/library:latest \
+		--tag gcr.io/littleman-co/library:$(GIT_HASH) \
+		.
+
+docker.push: docker.build ## Pushes the container
+	docker push gcr.io/littleman-co/library:latest
+	docker push gcr.io/littleman-co/library:$(GIT_HASH)
