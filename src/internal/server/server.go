@@ -22,7 +22,7 @@ func New(options ...func(*Server) error) (*Server, error) {
 
 // Serve starts the server
 func (s Server) Serve() error {
-	httpBook, err := book.New(book.WithBook("/usr/share/library/incident-management.epub"))
+	httpBook, err := book.New(book.WithBook("/book.epub"))
 
 	if err != nil {
 		return errors.Wrap(err, "unable to create http book")
