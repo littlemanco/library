@@ -131,7 +131,16 @@ func (o *OidcAuth) Middleware(next http.Handler) http.Handler {
 		}
 
 		if err := o.verify(token.Value); err != nil {
-			http.Error(w, fmt.Sprintf("Unauthorized: %s", err.Error()), http.StatusUnauthorized)
+			http.SetCookie(
+				w,
+				&http.Cookie{
+					Name:    CookieAuthentication,
+					Path:    "/",
+					Expires: time.Now().Add(-60 * time.Minute),
+				},
+			)
+
+			http.Error(w, fmt.Sprintf("Unauthorized: %s. Refresh to sign in again.", err.Error()), http.StatusUnauthorized)
 			return
 		}
 
