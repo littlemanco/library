@@ -2,6 +2,7 @@ package book
 
 import (
 	"bytes"
+	"fmt"
 	"net/http"
 
 	"github.com/kapmahc/epub"
@@ -24,11 +25,28 @@ func (h HTTPBook) Handler(w http.ResponseWriter, r *http.Request) {
 		path = "/nav.xhtml"
 	}
 
+	// Check if the file is in the book
+	exists := false
+	for _, f := range h.Book.Files() {
+		if fmt.Sprintf("EPUB%s", path) == f {
+			exists = true
+		}
+	}
+
+	// If the file is not th ere, return 404
+	if exists == false {
+		http.Error(w, "Not found", http.StatusNotFound)
+		return
+	}
+
+	// Open the file for reading
 	file, err := h.Book.Open(path)
+
 	if err != nil {
 		// Todo: Logging Here
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))
+		return
 	}
 
 	buf := new(bytes.Buffer)
