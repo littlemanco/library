@@ -20,6 +20,7 @@ var serveCmd = &cobra.Command{
 		// Default Options
 		options := []server.Option{
 			server.WithBook(viper.GetString("book.path")),
+			server.WithLogging(),
 		}
 
 		// Add auth, if set

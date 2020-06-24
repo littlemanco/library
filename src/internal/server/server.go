@@ -77,6 +77,21 @@ func WithOIDCAuthentication(config *OIDCConfig) func(*Server) error {
 	}
 }
 
+// WithLogging enables the logging on the server component
+func WithLogging() func(*Server) error {
+	return func(s *Server) error {
+		m, e := middleware.NewLogging()
+
+		if e != nil {
+			return errors.Wrap(e, "unable to set up logging middleware")
+		}
+
+		s.middleware = append(s.middleware, m.Middleware)
+
+		return nil
+	}
+}
+
 // Serve starts the server
 func (s Server) Serve() error {
 	httpBook, err := book.New(book.WithBook(s.bookPath))
