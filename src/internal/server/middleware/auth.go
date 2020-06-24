@@ -100,10 +100,6 @@ func WithClaims(claims map[string]string) func(o *OidcAuth) error {
 		// Add the required claims for later analysis
 		o.Claims = claims
 
-		for k := range claims {
-			o.OAuth2.Scopes = append(o.OAuth2.Scopes, k)
-		}
-
 		return nil
 	}
 }
