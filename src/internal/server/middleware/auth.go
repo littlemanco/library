@@ -73,8 +73,6 @@ func NewOidcAuth(
 		return nil, errors.Wrap(err, "Unable to set up oidc middleware")
 	}
 
-	// scopes := []string{oidc.ScopeOpenID} , "profile", "email"},
-
 	auth := &OidcAuth{
 		OIDCProvider: p,
 		OAuth2: &oauth2.Config{
@@ -82,7 +80,7 @@ func NewOidcAuth(
 			ClientID:     clientID,
 			ClientSecret: clientSecret,
 			RedirectURL:  redirectURL.String(),
-			Scopes:       []string{oidc.ScopeOpenID},
+			Scopes:       []string{oidc.ScopeOpenID, "profile", "email"},
 		},
 		RedirectURL: redirectURL,
 	}
