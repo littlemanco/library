@@ -3,6 +3,7 @@ package server
 import (
 	"net/http"
 
+	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 	"go.pkg.littleman.co/library/internal/book"
 	"go.pkg.littleman.co/library/internal/server/handlers"
@@ -47,8 +48,14 @@ func (s Server) Serve() error {
 		return errors.Wrap(err, "unable to create http book")
 	}
 
-	http.HandleFunc("/healthz", handlers.NoContent)
-	http.HandleFunc("/", httpBook.Handler)
+	r := mux.NewRouter()
+
+	// Bind the routes
+	r.HandleFunc("/healthz", handlers.NoContent)
+	r.HandleFunc("/", httpBook.Handler)
+
+	// Set the router
+	http.Handle("/", r)
 
 	return http.ListenAndServe(s.address, nil)
 }
