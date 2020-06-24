@@ -6,16 +6,19 @@ import (
 
 	"github.com/dedelala/sysexits"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"go.pkg.littleman.co/library/internal/server"
 )
 
 // srveCmd represents the srve command
-var srveCmd = &cobra.Command{
+var serveCmd = &cobra.Command{
 	Use:   "serve",
 	Short: "Start the server",
 	Run: func(cmd *cobra.Command, args []string) {
-		srv, err := server.New()
+		srv, err := server.New(
+			server.WithBook(viper.GetString("book.path")),
+		)
 
 		if err != nil {
 			fmt.Printf("unable to create server: %s", err.Error())
@@ -30,5 +33,5 @@ var srveCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(srveCmd)
+	rootCmd.AddCommand(serveCmd)
 }

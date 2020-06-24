@@ -32,7 +32,10 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is /etc/.library.yaml)")
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default /etc/.library.yaml)")
+	rootCmd.PersistentFlags().StringP("book-path", "p", "/book.epub", "The path to the book that should be rendered")
+
+	viper.BindPFlag("book.path", rootCmd.PersistentFlags().Lookup("book-path"))
 }
 
 // initConfig reads in config file and ENV variables if set.
