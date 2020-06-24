@@ -3,7 +3,9 @@ package book
 import (
 	"bytes"
 	"fmt"
+	"mime"
 	"net/http"
+	"path/filepath"
 
 	"github.com/kapmahc/epub"
 	"github.com/pkg/errors"
@@ -51,6 +53,11 @@ func (h HTTPBook) Handler(w http.ResponseWriter, r *http.Request) {
 
 	buf := new(bytes.Buffer)
 	buf.ReadFrom(file)
+
+	// Set the content type appropriately
+	w.Header().Set("Content-Type", mime.TypeByExtension(filepath.Ext(path)))
+
+	// Write the response out
 	w.Write(buf.Bytes())
 }
 
