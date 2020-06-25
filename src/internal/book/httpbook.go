@@ -1,25 +1,29 @@
 package book
 
 import (
-	"bytes"
 	"fmt"
+	"io"
 	"mime"
 	"net/http"
 	"path/filepath"
 
-	"github.com/kapmahc/epub"
 	"github.com/pkg/errors"
+	"golang.org/x/net/html"
 )
 
-// HTTPBook represents a "servable book"
-type HTTPBook struct {
+type renderer func(io.Reader, io.Writer) error
 
-	// Book is the actual book being served
-	Book *epub.Book
+// HTTPBook is a book that will be returned over HTTP.
+type HTTPBook struct {
+	Book
 }
 
+const (
+	extTypeXHTML = ".xhtml"
+)
+
 // Handler is the HTTP handler that serves the appropriate book content
-func (h HTTPBook) Handler(w http.ResponseWriter, r *http.Request) {
+func (h Book) Handler(w http.ResponseWriter, r *http.Request) {
 	path := r.RequestURI
 
 	// In the case this is the root, transform the root into the nav file.
@@ -29,7 +33,7 @@ func (h HTTPBook) Handler(w http.ResponseWriter, r *http.Request) {
 
 	// Check if the file is in the book
 	exists := false
-	for _, f := range h.Book.Files() {
+	for _, f := range h.EPub.Files() {
 		if fmt.Sprintf("EPUB%s", path) == f {
 			exists = true
 		}
@@ -42,54 +46,83 @@ func (h HTTPBook) Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Open the file for reading
-	file, err := h.Book.Open(path)
+	file, err := h.EPub.Open(path)
+	ext := filepath.Ext(path)
 
 	if err != nil {
-		// Todo: Logging Here
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(err.Error()))
+		renderError(err, w)
 		return
 	}
 
-	buf := new(bytes.Buffer)
-	buf.ReadFrom(file)
+	w.Header().Set("Content-Type", mime.TypeByExtension(ext))
 
-	// Set the content type appropriately
-	w.Header().Set("Content-Type", mime.TypeByExtension(filepath.Ext(path)))
-
-	// Write the response out
-	w.Write(buf.Bytes())
+	switch ext {
+	case extTypeXHTML:
+		if err := renderHTML(file, w); err != nil {
+			renderError(err, w)
+		}
+	default:
+		if err := renderSimple(file, w); err != nil {
+			renderError(err, w)
+		}
+	}
 }
 
-// New creates a new HTTPBook entity
-func New(options ...func(*HTTPBook) error) (*HTTPBook, error) {
-	b := &HTTPBook{}
+func renderSimple(h io.Reader, w http.ResponseWriter) error {
+	io.Copy(w, h)
 
-	for _, o := range options {
-		if err := o(b); err != nil {
-			return nil, errors.Wrap(err, "unable to persist option to Book")
+	return nil
+}
+
+func renderHTML(h io.Reader, w http.ResponseWriter) error {
+	xhtmlMobileFriendly := []*html.Node{
+		{Type: html.ElementNode, Data: "meta", Attr: []html.Attribute{
+			{Key: "name", Val: "viewport"},
+			{Key: "content", Val: "width=device-width, initial-scale=1.0"},
+		}},
+		{Type: html.ElementNode, Data: "style", Attr: []html.Attribute{
+			{Key: "type", Val: "text/css"},
+		}, FirstChild: &html.Node{
+			Type: html.TextNode, Data: `
+body {
+	display: block;
+	margin: 0 auto;
+	max-width: 1200px;
+	padding: 0 15px !important;
+}
+`,
+		}}}
+
+	// Function to traverse the HTML tree
+	// Todo: This should be pulled out, and the pages modified before storing in memory for later access.
+	var f func(*html.Node)
+	f = func(n *html.Node) {
+		if n.Type == html.ElementNode && n.Data == "head" {
+			for _, x := range xhtmlMobileFriendly {
+				n.AppendChild(x)
+			}
+		}
+
+		for c := n.FirstChild; c != nil; c = c.NextSibling {
+			f(c)
 		}
 	}
 
-	// Check required properties
-	if b.Book == nil {
-		return nil, errors.New("cannot create http book: no book supplied")
+	doc, err := html.Parse(h)
+
+	if err != nil {
+		return errors.Wrap(err, "unable to parse html")
 	}
 
-	return b, nil
+	// Modify DOc
+	f(doc)
+	html.Render(w, doc)
+
+	return nil
 }
 
-// WithBook adds the book to the HTTPBook
-func WithBook(path string) func(*HTTPBook) error {
-	return func(h *HTTPBook) error {
-		book, err := epub.Open(path)
-
-		if err != nil {
-			return errors.Wrap(err, "unable to open book")
-		}
-
-		h.Book = book
-
-		return nil
-	}
+func renderError(e error, w http.ResponseWriter) {
+	// Todo: This should be a better error handler, including logging errors
+	w.WriteHeader(http.StatusInternalServerError)
+	w.Write([]byte(e.Error()))
 }

@@ -100,7 +100,7 @@ func WithLogging() func(*Server) error {
 
 // Serve starts the server
 func (s Server) Serve() error {
-	httpBook, err := book.New(book.WithBook(s.bookPath))
+	Book, err := book.New(book.WithEPUB(s.bookPath))
 
 	if err != nil {
 		return errors.Wrap(err, "unable to create http book")
@@ -114,7 +114,7 @@ func (s Server) Serve() error {
 
 	// Bind the routes)
 	r.Use(s.middleware...)
-	r.PathPrefix("/").HandlerFunc(httpBook.Handler)
+	r.PathPrefix("/").HandlerFunc(Book.Handler)
 
 	// Set router to HTTP server
 	http.Handle("/", r)
