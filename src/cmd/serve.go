@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/viper"
 
 	"go.pkg.littleman.co/library/internal/server"
+	"go.pkg.littleman.co/library/internal/server/middleware"
 )
 
 // srveCmd represents the srve command
@@ -38,12 +39,25 @@ var serveCmd = &cobra.Command{
 				os.Exit(sysexits.DataErr)
 			}
 
+			claimSets := []middleware.OIDCClaimSet{}
+
+			// Iterate over the sets
+			for _, rS := range viper.Get("server.authentication.oidc.claims").([]interface{}) {
+				set := middleware.OIDCClaimSet{}
+
+				for rK, rV := range rS.(map[interface{}]interface{}) {
+					set[rK.(string)] = rV.(string)
+				}
+
+				claimSets = append(claimSets, set)
+			}
+
 			options = append(options, server.WithOIDCAuthentication(&server.OIDCConfig{
 				Provider:     viper.GetString("server.authentication.oidc.provider"),
 				ClientID:     viper.GetString("server.authentication.oidc.client.id"),
 				ClientSecret: viper.GetString("server.authentication.oidc.client.secret"),
 				RedirectURL:  url,
-				Claims:       viper.GetStringMapString("server.authentication.oidc.claims"),
+				ClaimSets:    claimSets,
 			}))
 		}
 

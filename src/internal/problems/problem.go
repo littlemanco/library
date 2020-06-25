@@ -10,6 +10,17 @@ import (
 // FactoryTypeIDTemplate is thestring that is made part of the URI template that will get replaced
 const FactoryTypeIDTemplate = "__ID__"
 
+const (
+	// AudienceConsumer are the end users of this service.
+	AudienceConsumer = iota
+
+	// AudienceAPIUser are users who are accessing this service via an API
+	AudienceAPIUser = iota
+
+	// AudienceDeveloper are users who are maintaining this software
+	AudienceDeveloper = iota
+)
+
 // Problem is an error that has additional metadata associated with it designed to help users understand and resolve
 // it.
 //
@@ -27,6 +38,9 @@ type Problem struct {
 
 	// An optional description of the problem
 	Description string
+
+	// The users who are the intended target of this problem message
+	Audience []int
 }
 
 // Factory allows easy, opinionated problem creation
@@ -49,17 +63,29 @@ func (p Problem) String() string {
 	return fmt.Sprintf("%s: %s (%s)", p.Title, p.Description, p.Type)
 }
 
+// IsFor Allows Checking for whom this error is intended
+func (p Problem) IsFor(Audience int) bool {
+	for _, x := range p.Audience {
+		if Audience == x {
+			return true
+		}
+	}
+
+	return false
+}
+
 // New Creates a new problem object
-func New(Type string, Title, Message string) *Problem {
+func New(Type string, Title, Message string, Audience []int) *Problem {
 	return &Problem{
 		Type:        Type,
 		Title:       Title,
 		Description: Message,
+		Audience:    Audience,
 	}
 }
 
 // WithEverything creates a complete problem object
-func (f Factory) WithEverything(Title string, Description string) *Problem {
+func (f Factory) WithEverything(Title string, Description string, Audience []int) *Problem {
 	h := adler32.New()
 	h.Write([]byte(Title))
 
@@ -69,6 +95,7 @@ func (f Factory) WithEverything(Title string, Description string) *Problem {
 		URI,
 		Title,
 		Description,
+		Audience,
 	)
 }
 
@@ -77,5 +104,15 @@ func (f Factory) WithTitle(Title string) *Problem {
 	return f.WithEverything(
 		Title,
 		"",
+		[]int{AudienceDeveloper},
+	)
+}
+
+// WithTitleAudience is for denoting when this problem is for a specific audience (usually non-developer)
+func (f Factory) WithTitleAudience(Title string, Audience []int) *Problem {
+	return f.WithEverything(
+		Title,
+		"",
+		Audience,
 	)
 }

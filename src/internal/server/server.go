@@ -17,7 +17,7 @@ type OIDCConfig struct {
 	ClientID     string
 	ClientSecret string
 	RedirectURL  *url.URL
-	Claims       map[string]string
+	ClaimSets    []middleware.OIDCClaimSet
 }
 
 // Server is the entity that listens to HTTP requests and responds
@@ -59,12 +59,18 @@ func WithBook(path string) func(*Server) error {
 // WithOIDCAuthentication modifies the library to authenticate users against an OIDC Endpoint
 func WithOIDCAuthentication(config *OIDCConfig) func(*Server) error {
 	return func(s *Server) error {
+		options := []middleware.OIDCAuthConfiguration{}
+
+		for _, c := range config.ClaimSets {
+			options = append(options, middleware.WithClaimSet(c))
+		}
+
 		auth, err := middleware.NewOidcAuth(
 			config.Provider,
 			config.ClientID,
 			config.ClientSecret,
 			config.RedirectURL,
-			middleware.WithClaims(config.Claims),
+			options...,
 		)
 
 		if err != nil {

@@ -13,14 +13,14 @@ import (
 	"golang.org/x/oauth2"
 )
 
-// CookieReturnURL the URL that users will be redirected to once authentication is complete
-const CookieReturnURL = "return-url"
+// CookieNameReturnURL the URL that users will be redirected to once authentication is complete
+const CookieNameReturnURL = "return-url"
 
 // CookieAuthentication the authentication token that users will be verified against
 const CookieAuthentication = "authentication"
 
-// ClaimSet is a set of claims that must match collectively for the autentication to continue
-type ClaimSet map[string]string
+// OIDCClaimSet is a set of claims that must match collectively for the autentication to continue
+type OIDCClaimSet map[string]string
 
 var problem = &problems.Factory{
 	URITemplate: "https://github.com/littlemanco/library/tree/master/docs/errors/__ID__.md",
@@ -28,20 +28,24 @@ var problem = &problems.Factory{
 
 // OidcAuth is an object that creates the OIDC Middleware primitive
 type OidcAuth struct {
+	// Public
 	OIDCProvider *oidc.Provider
 	OAuth2       *oauth2.Config
 	RedirectURL  *url.URL
-	Claims       map[string]string
+	Claims       []OIDCClaimSet
 
 	// State is a random
 	// State        string
 	// Todo: Inject telemetry
 }
 
+// OIDCAuthConfiguration is a function that modifies OIDC Auth behaviour
+type OIDCAuthConfiguration func(o *OidcAuth) error
+
 // Write the URL users should return to to a persistent store
 func writeToURL(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &http.Cookie{
-		Name:     CookieReturnURL,
+		Name:     CookieNameReturnURL,
 		Value:    r.RequestURI,
 		Path:     "/",
 		Expires:  time.Now().Add(60 * time.Minute),
@@ -58,7 +62,7 @@ func readAndClearToURL(w http.ResponseWriter, r *http.Request) string {
 	}
 
 	http.SetCookie(w, &http.Cookie{
-		Name:     CookieReturnURL,
+		Name:     CookieNameReturnURL,
 		Value:    "",
 		Path:     "/",
 		Expires:  time.Now().Add(-60 * time.Minute),
@@ -74,7 +78,7 @@ func NewOidcAuth(
 	clientID string,
 	clientSecret string,
 	redirectURL *url.URL,
-	options ...func(o *OidcAuth) error,
+	options ...OIDCAuthConfiguration,
 ) (*OidcAuth, error) {
 	p, err := oidc.NewProvider(context.Background(), provider)
 	if err != nil {
@@ -107,11 +111,16 @@ func NewOidcAuth(
 	return auth, nil
 }
 
-// WithClaims allows requiring specific characteristics of the OIDC to verify against
-func WithClaims(claims map[string]string) func(o *OidcAuth) error {
+// WithClaimSet allows requiring specific characteristics of the OIDC to verify against
+func WithClaimSet(set OIDCClaimSet) func(o *OidcAuth) error {
 	return func(o *OidcAuth) error {
+		// Validate there are actually OIDC claims
+		if len(set) == 0 {
+			return problem.WithTitle("Empty set of OIDC Claims supplied")
+		}
+
 		// Add the required claims for later analysis
-		o.Claims = claims
+		o.Claims = append(o.Claims, set)
 
 		return nil
 	}
@@ -204,18 +213,31 @@ func (o *OidcAuth) verify(token string) error {
 		return errors.Wrap(err, "unable to verify user")
 	}
 
-	for k, v := range o.Claims {
-		val, ok := claims[k]
+	// Unwrap list
+	for _, s := range o.Claims {
+		// Test if any claims are valid
+		isValidForClaimSet := true
+		for k, v := range s {
+			val, ok := claims[k]
 
-		// Bail early if the claim is not there
-		if !ok {
-			return fmt.Errorf("required claim “%s” not present", k)
+			// Bail early if the claim is not there
+			if !ok {
+				isValidForClaimSet = false
+				break
+			}
+
+			// Bail if an expected claim does not match
+			if val != v {
+				isValidForClaimSet = false
+				break
+			}
 		}
 
-		if val != v {
-			return fmt.Errorf("required claim “%s” does not match the requirement", val)
+		// Only a single match needs to be valid. If it is, exit with success.
+		if isValidForClaimSet {
+			return nil
 		}
 	}
 
-	return nil
+	return problem.WithTitleAudience("User Missing Valid Claim Set", []int{problems.AudienceConsumer})
 }
