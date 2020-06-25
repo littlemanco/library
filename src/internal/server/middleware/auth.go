@@ -7,8 +7,9 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/coreos/go-oidc"
+	oidc "github.com/coreos/go-oidc"
 	"github.com/pkg/errors"
+	"go.pkg.littleman.co/library/internal/problems"
 	"golang.org/x/oauth2"
 )
 
@@ -17,6 +18,13 @@ const CookieReturnURL = "return-url"
 
 // CookieAuthentication the authentication token that users will be verified against
 const CookieAuthentication = "authentication"
+
+// ClaimSet is a set of claims that must match collectively for the autentication to continue
+type ClaimSet map[string]string
+
+var problem = &problems.Factory{
+	URITemplate: "https://github.com/littlemanco/library/tree/master/docs/errors/__ID__.md",
+}
 
 // OidcAuth is an object that creates the OIDC Middleware primitive
 type OidcAuth struct {
@@ -89,6 +97,11 @@ func NewOidcAuth(
 		if e := o(auth); e != nil {
 			return nil, errors.Wrap(e, "Unable to set up oidc middleware")
 		}
+	}
+
+	// Validate constructed object
+	if len(auth.Claims) == 0 {
+		return nil, problem.WithTitle("Missing OIDC Claims")
 	}
 
 	return auth, nil
