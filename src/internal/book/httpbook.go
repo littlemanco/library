@@ -91,7 +91,23 @@ body {
 	padding: 0 15px !important;
 }
 `,
-		}}}
+		}},
+
+		// Google Analycs
+		{Type: html.ElementNode, Data: "script", Attr: []html.Attribute{
+			{Key: "async"},
+			{Key: "src", Val: "https://www.googletagmanager.com/gtag/js?id=UA-53227254-5"},
+		}},
+		{Type: html.ElementNode, Data: "script", FirstChild: &html.Node{
+			Type: html.TextNode, Data: `
+			window.dataLayer = window.dataLayer || [];
+			function gtag(){dataLayer.push(arguments);}
+			gtag('js', new Date());
+
+			gtag('config', 'UA-53227254-5');
+`,
+		}},
+	}
 
 	// Function to traverse the HTML tree
 	// Todo: This should be pulled out, and the pages modified before storing in memory for later access.
