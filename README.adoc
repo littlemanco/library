@@ -1,0 +1,17 @@
+= Library
+
+Library is a project that is designed to read an ebook (or later, a series of ebooks) and create a UI that is easy
+to consume.
+
+It is essentially a "web" implementation of eReaders, such as Google Books.
+
+== Why
+
+As part of ongoing work to create consensus around various operational topics there are a series of books being written. 
+These books are designed to be sharable, especially while they're in draft but later to a broader audience.
+
+There was few implementations of eReaders around, and unpacking the files on disk did not yeild a satisfactory user experience.
+
+== Support
+
+There is no support for this project. It is a hobby of the author.
