@@ -55,7 +55,7 @@ func writeToURL(w http.ResponseWriter, r *http.Request) {
 
 // Read the URL users should return to the persistent store back
 func readAndClearToURL(w http.ResponseWriter, r *http.Request) string {
-	c, err := r.Cookie(CookieAuthentication)
+	c, err := r.Cookie(CookieNameReturnURL)
 
 	if err != nil {
 		return "/"
